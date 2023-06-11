@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Filter Data</title>
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.25/css/jquery.dataTables.min.css">
+  <link rel="stylesheet" type="text/css" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+</head>
+<body>
+  <button id="tambahBtn">Tambah Data</button>
+
+  <table id="dataTable">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Nama</th>
+        <th>Besar</th>
+        <th>Type</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div id="formContainer" style="display: none;">
+    <h3>Tambah Data</h3>
+    <form id="dataForm">
+      <input type="hidden" id="dataId" name="id">
+      <label for="nama">Nama:</label>
+      <input type="text" id="nama" name="nama" required>
+      <label for="besar">besar:</label>
+      <input type="number" id="besar" name="besar" required>
+      <label for="type">type:</label>
+      <input type="text" id="type" name="type" required>
+      <button type="submit">Simpan</button>
+      <button type="button" id="cancelBtn">Batal</button>
+    </form>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.min.js"></script>
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+  <script>
+    $(document).ready(function() {
+      var dataTable = $('#dataTable').DataTable({
+        columns: [
+          { data: 'id' },
+          { data: 'nama' },
+          { data: 'besar' },
+          { data: 'type' },
+          {
+            data: null,
+            render: function(data, type, row) {
+              return '<button class="editBtn" data-id="' + data.id + '">Edit</button>' +
+                     '<button class="deleteBtn" data-id="' + data.id + '">Hapus</button>';
+            }
+          }
+        ]
+      });
+
+      function loaddataData() {
+        $.ajax({
+          url: 'http://localhost:3000/Data',
+          method: 'GET',
+          dataType: 'json',
+          success: function(response) {
+            dataTable.clear().rows.add(response).draw();
+          }
+        });
+      }
+
+      loaddataData();
+
+      $('#tambahBtn').button().click(function() {
+        $('#dataForm')[0].reset();
+        $('#dataId').val('');
+        $('#formContainer').show();
+      });
+
+      $('#dataForm').submit(function(e) {
+        e.preventDefault();
+        var dataId = $('#dataId').val();
+        var dataData = {
+          nama: $('#nama').val(),
+          besar: $('#besar').val(),
+          type: $('#type').val()
+        };
+
+        var apiUrl = dataId ? 'http://localhost:3000/Data/' + dataId : 'http://localhost:3000/Data';
+
+        $.ajax({
+          url: apiUrl,
+          method: dataId ? 'PUT' : 'POST',
+          dataType: 'json',
+          contentType: 'application/json',
+          data: JSON.stringify(dataData),
+          success: function(response) {
+            if (dataId) {
+              var index = dataTable.row($('button.editBtn[data-id="' + dataId + '"]').parents('tr')).index();
+              dataTable.row(index).data(response).draw();
+            } else {
+              dataTable.row.add(response).draw();
+            }
+            $('#formContainer').hide();
+          }
+        });
+      });
+
+      $(document).on('click', '.editBtn', function() {
+        var dataId = $(this).data('id');
+        var apiUrl = 'http://localhost:3000/Data/' + dataId;
+
+        $.ajax({
+          url: apiUrl,
+          method: 'GET',
+          dataType: 'json',
+          success: function(response) {
+            $('#dataId').val(response.id);
+            $('#nama').val(response.nama);
+            $('#besar').val(response.besar);
+            $('#type').val(response.type);
+            $('#formContainer').show();
+          }
+        });
+      });
+
+      $(document).on('click', '.deleteBtn', function() {
+        var dataId = $(this).data('id');
+        var apiUrl = 'http://localhost:3000/Data/' + dataId;
+
+        if (confirm('Apakah Anda yakin ingin menghapus Data ini?')) {
+          $.ajax({
+            url: apiUrl,
+            method: 'DELETE',
+            success: function(response) {
+              var index = dataTable.row($('button.deleteBtn[data-id="' + dataId + '"]').parents('tr')).index();
+              dataTable.row(index).remove().draw();
+            }
+          });
+        }
+      });
+
+      $('#cancelBtn').button().click(function() {
+        $('#dataForm')[0].reset();
+        $('#dataId').val('');
+        $('#formContainer').hide();
+      });
+    });
+  </script>
+</body>
+</html>
